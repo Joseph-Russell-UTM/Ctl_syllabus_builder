@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from "react";
 import {
   BookOpen, User, MessageSquare, Target, Library, Scale, Gavel,
   ShieldCheck, CalendarDays, FileDown, Check, AlertTriangle, Plus, Trash2,
-  Save, Upload, Printer, Lock, Info, ChevronRight
+  Save, Upload, Printer, Lock, Info, ChevronRight, FlaskConical
 } from "lucide-react";
 
 /* ============================================================
@@ -191,6 +191,12 @@ const blank = {
   inc: { integrity: true, accessibility: true, support: true, crisis: true, changes: true },
   weeks: [{ label: "Week 1", dates: "", topics: "", due: "" }],
   calNote: true,
+  hasLab: false,
+  lab: {
+    crn: "", meeting: "", location: "", instructor: "",
+    description: "", gradeNote: "", attendance: "",
+    safety: "", supplies: "", makeup: "",
+  },
 };
 
 /* ---------- small UI atoms ---------- */
@@ -242,6 +248,7 @@ export default function SyllabusBuilder() {
     setD((p) => { const a = [...p[k]]; a[i] = { ...a[i], [key]: v }; return { ...p, [k]: a }; });
   const push = (k, obj) => setD((p) => ({ ...p, [k]: [...p[k], obj] }));
   const drop = (k, i) => setD((p) => ({ ...p, [k]: p[k].filter((_, j) => j !== i) }));
+  const setLab = (k, v) => setD((p) => ({ ...p, lab: { ...p.lab, [k]: v } }));
 
   const weightTotal = useMemo(
     () => d.items.reduce((s, x) => s + (parseFloat(x.weight) || 0), 0), [d.items]);
@@ -273,6 +280,11 @@ export default function SyllabusBuilder() {
     ["Academic integrity included", d.inc.integrity],
     ["Crisis resources included", d.inc.crisis],
     ["Schedule has at least one entry", d.weeks.some((w) => w.topics || w.dates)],
+    ...(d.hasLab ? [
+      ["Lab meeting time and location", !!(d.lab.meeting && d.lab.location)],
+      ["How the lab counts toward the course grade", !!d.lab.gradeNote],
+      ["Lab safety expectations stated", !!d.lab.safety],
+    ] : []),
   ];
   const passed = checks.filter((c) => c[1]).length;
 
@@ -342,6 +354,29 @@ export default function SyllabusBuilder() {
         }</td><td class="w">${esc(x.weight)}%</td><td>${esc(x.desc)}</td></tr>`).join("")
       }<tr class="tot"><td>Total</td><td class="w">${weightTotal}%</td><td></td></tr></table>`);
       if (d.scale) { h.push(`<h3>Grading scale</h3>`); h.push(para(d.scale)); }
+    }
+
+        if (d.hasLab) {
+      const L = d.lab;
+      sec("Laboratory Component");
+      const lf = [
+        ["Lab section / CRN", L.crn],
+        ["Lab meeting time", L.meeting],
+        ["Lab location", L.location],
+        ["Lab instructor", L.instructor],
+      ].filter((r) => r[1] && String(r[1]).trim());
+      if (lf.length) h.push(`<table class="grid">${lf.map((r) =>
+        `<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td></tr>`).join("")}</table>`);
+      if (L.description) h.push(para(L.description));
+      [
+        ["How the Lab Counts Toward Your Grade", L.gradeNote],
+        ["Lab Attendance", L.attendance],
+        ["Lab Safety", L.safety],
+        ["Supplies and Protective Equipment", L.supplies],
+        ["Missed Labs and Make-Up", L.makeup],
+      ].forEach(([t, b]) => {
+        if (b && b.trim()) { h.push(`<h3>${esc(t)}</h3>`); h.push(para(b)); }
+      });
     }
 
     const pol = [];
@@ -446,7 +481,7 @@ export default function SyllabusBuilder() {
     { n: "Course", i: BookOpen }, { n: "Instructor", i: User }, { n: "Welcome", i: MessageSquare },
     { n: "Outcomes", i: Target }, { n: "Materials", i: Library }, { n: "Grading", i: Scale },
     { n: "Policies", i: Gavel }, { n: "University", i: ShieldCheck }, { n: "Schedule", i: CalendarDays },
-    { n: "Export", i: FileDown },
+    {n: "Labs", i: FlaskConical},{ n: "Export", i: FileDown },
   ];
 
   const Btn = ({ onClick, children, icon: I, primary }) => (
@@ -689,7 +724,31 @@ export default function SyllabusBuilder() {
             </div>
           </>)}
 
-          {tab === 9 && (<>
+                    {tab === 9 && (<>
+            <H>Laboratory Component</H>
+            <label className="flex items-start gap-2 mb-4 text-sm" style={{ color: C.slate, cursor: "pointer" }}>
+              <input type="checkbox" checked={d.hasLab} onChange={(e) => set("hasLab", e.target.checked)} style={{ marginTop: 3 }} />
+              <span>This course has a lab component. Checking this adds a Laboratory Component section to the syllabus.</span>
+            </label>
+            {d.hasLab && (<>
+              <Note>Students often ask three things about a lab: does it count toward my course grade, what happens if I miss one, and what do I need to bring. Answering those here saves you the emails.</Note>
+              <div className="flex gap-3 flex-wrap">
+                <div style={{ flex: "1 1 130px" }}><Field label="Lab section / CRN"><T value={d.lab.crn} onChange={(v) => setLab("crn", v)} placeholder="12346" /></Field></div>
+                <div style={{ flex: "2 1 220px" }}><Field label="Lab instructor" hint="if different from you"><T value={d.lab.instructor} onChange={(v) => setLab("instructor", v)} /></Field></div>
+              </div>
+              <Field label="Lab meeting time"><T value={d.lab.meeting} onChange={(v) => setLab("meeting", v)} placeholder="Wednesday, 2:00 to 4:50 p.m." /></Field>
+              <Field label="Lab location"><T value={d.lab.location} onChange={(v) => setLab("location", v)} placeholder="Science Complex 118" /></Field>
+              <Field label="What happens in lab" hint="how it connects to lecture"><A rows={3} value={d.lab.description} onChange={(v) => setLab("description", v)} /></Field>
+              <Field label="How the lab counts toward the course grade" hint="separate grade, percent of the total, or must pass both"><A rows={3} value={d.lab.gradeNote} onChange={(v) => setLab("gradeNote", v)} placeholder="Lab is 25 percent of your final grade. Lab reports are graded within one week." /></Field>
+              <Field label="Lab attendance"><A rows={3} value={d.lab.attendance} onChange={(v) => setLab("attendance", v)} /></Field>
+              <Field label="Lab safety" hint="required"><A rows={4} value={d.lab.safety} onChange={(v) => setLab("safety", v)} placeholder="Your safety rules, any training students must complete before the first lab, and what happens if the rules are not followed." /></Field>
+              <Field label="Supplies and protective equipment"><A rows={3} value={d.lab.supplies} onChange={(v) => setLab("supplies", v)} placeholder="Lab notebook, closed-toe shoes, goggles (available at the bookstore)." /></Field>
+              <Field label="Missed labs and make-up"><A rows={3} value={d.lab.makeup} onChange={(v) => setLab("makeup", v)} /></Field>
+            </>)}
+          </>)}
+
+
+          {tab === 10 && (<>
             <H>Review and Export</H>
             <div className="mb-5">
               {checks.map(([label, ok]) => (
