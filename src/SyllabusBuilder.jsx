@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   BookOpen, User, MessageSquare, Target, Library, Scale, Gavel,
   ShieldCheck, CalendarDays, FileDown, Check, AlertTriangle, Plus, Trash2,
-  Save, Upload, Printer, Lock, Info, ChevronRight, FlaskConical
+  Printer, Lock, Info, ChevronRight, FlaskConical
 } from "lucide-react";
 
 /* ============================================================
@@ -254,7 +254,6 @@ export default function SyllabusBuilder() {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [hasUnsavedChanges]);
   const [tab, setTab] = useState(0);
-  const fileRef = useRef(null);
   const frameRef = useRef(null);
 
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
@@ -481,13 +480,6 @@ export default function SyllabusBuilder() {
     const doc = f.contentWindow.document;
     doc.open(); doc.write(fullHtml()); doc.close();
     setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); }, 250);
-  };
-  const saveJson = () => dl(new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }), fname("json"));
-  const loadJson = (e) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = () => { try { setD({ ...blank, ...JSON.parse(r.result) }); } catch { alert("That file could not be read as a saved syllabus."); } };
-    r.readAsText(f); e.target.value = "";
   };
 
   /* ---------- sections ---------- */
@@ -777,11 +769,6 @@ export default function SyllabusBuilder() {
             <div className="flex flex-wrap gap-2 mb-4">
               <Btn onClick={exportWord} icon={FileDown} primary>Export to Word</Btn>
               <Btn onClick={exportPdf} icon={Printer} primary>Export to PDF</Btn>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Btn onClick={saveJson} icon={Save}>Save my work</Btn>
-              <Btn onClick={() => fileRef.current?.click()} icon={Upload}>Load a saved file</Btn>
-              <input ref={fileRef} type="file" accept=".json" onChange={loadJson} style={{ display: "none" }} />
             </div>
             <div style={{ fontSize: 12, color: C.slate, marginTop: 14, lineHeight: 1.55 }}>
               Word opens the export as a normal document you can keep editing. PDF opens your browser's print dialog, where you choose Save as PDF. Both come out in Cambria with the UT Martin banner and real Word heading styles, so a screen reader can navigate it.
